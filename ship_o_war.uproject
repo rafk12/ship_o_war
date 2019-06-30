@@ -24,11 +24,11 @@
 			"Enabled": true
 		},
 		{
-			"Name": "CodeView",
+			"Name": "CodeEditor",
 			"Enabled": true
 		},
 		{
-			"Name": "CodeEditor",
+			"Name": "CodeView",
 			"Enabled": true
 		},
 		{
