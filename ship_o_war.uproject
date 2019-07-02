@@ -1,13 +1,17 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "4.22",
+	"EngineAssociation": "{DE4A54B1-4BFB-FD37-0551-3AA7694C6E0D}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
 		{
 			"Name": "ship_o_war",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"CoreUObject"
+			]
 		}
 	],
 	"Plugins": [
