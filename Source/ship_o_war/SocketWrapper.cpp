@@ -25,62 +25,61 @@ void UBattleShipSocketWrapper::HandleByte(FByteData Data)
 {
 	switch (CurrentState)
 	{
-	case EState::None:
+	case EReadingState::None:
 		{
-			CurrentState = static_cast<EState>(Data.Uns);
-			CurrentStateData = -1;
+			CurrentState = static_cast<EReadingState>(Data.Uns);
+			CurrentStateData.Reset();
 		}
 		break;
-	case EState::Grid:
+	case EReadingState::Grid:
 		{
-			if(CurrentStateData == -1)
+			if (CurrentStateData.Num() == 0)
 			{
-				CurrentStateData = Data.sig;
+				CurrentStateData.Add(Data.Sig);
 				return;
 			}
-			BSCreateGridEvent.Broadcast(CurrentStateData, Data.sig);
-			CurrentState = EState::None;
+			BSCreateGridEvent.Broadcast(CurrentStateData[0], Data.Sig);
+			CurrentState = EReadingState::None;
 		}
 		break;
-	case EState::Skin:
+	case EReadingState::Skin:
+		BSSelectSkinEvent.Broadcast(Data.Sig);
+		break;
+	case EReadingState::Slot:
 		{
+			if (CurrentStateData.Num() < 4)
+			{
+				CurrentStateData.Add(Data.Sig);
+				return;
+			}
+			BSRevealSlotEvent.Broadcast(CurrentStateData[0], CurrentStateData[1], CurrentStateData[2],
+			                            CurrentStateData[3], Data.Sig);
+			CurrentState = EReadingState::None;
 		}
 		break;
-	case EState::Slot:
-		{
-		}
+	case EReadingState::Win:
+		BSWinEvent.Broadcast(!!Data.Sig);
 		break;
-	case EState::Win:
-		{
-		}
+	case EReadingState::BoatCount:
+		BSBoatCountEvent.Broadcast(Data.Sig);
+		break;
+	case EReadingState::Turn:
+		BSTurnEvent.Broadcast(!!Data.Sig);
 		break;
 	default:
 		{
-			CurrentState = EState::None;
+			CurrentState = EReadingState::None;
 		};
 	}
 }
 
 void UBattleShipSocketWrapper::Tick()
 {
-	const auto ConnectionState = Socket->GetConnectionState();
+	const auto ConnectionState = static_cast<EBattleshipSocketConnectionState>(Socket->GetConnectionState());
 	if (ConnectionState != LastConnectionState)
 	{
 		LastConnectionState = ConnectionState;
-		EBattleshipSocketConnectionState state;
-		switch (ConnectionState)
-		{
-		case SCS_NotConnected:
-			state = EBattleshipSocketConnectionState::BPSocket_NotConnected;
-			break;
-		case SCS_Connected:
-			state = EBattleshipSocketConnectionState::BPSocket_Connected;
-			break;
-		default:
-			state = EBattleshipSocketConnectionState::BPSocket_ConnectionError;
-			break;
-		}
-		SocketConnectionStateChanged.Broadcast(state);
+		SocketConnectionStateChanged.Broadcast(ConnectionState);
 	}
 	uint32 PendingDataCount;
 	if (Socket->HasPendingData(PendingDataCount))
@@ -96,14 +95,30 @@ void UBattleShipSocketWrapper::Tick()
 		Data.SetNum(DataRead);
 		for (auto It = Data.CreateConstIterator(); It; ++It)
 		{
-			HandleByte({.Uns = *It });
+			HandleByte({.Uns = *It});
 		}
 	}
 }
 
+
+bool UBattleShipSocketWrapper::SocketConnectionGuarantee() const
+{
+	const auto Ok = Socket != nullptr && Socket->GetConnectionState() == SCS_Connected;
+	if(!Ok)
+	{
+		UE_LOG(LogBattleship, Error, TEXT("Trying to use a disconnected socket"));
+	}
+	return Ok;
+}
+
 bool UBattleShipSocketWrapper::Connect(const FString& IP, int32 Port)
 {
-	if (LastConnectionState == SCS_Connected)
+	if (Socket == nullptr)
+	{
+		UE_LOG(LogBattleship, Error, TEXT("Invalid socket (null)"));
+		return false;
+	}
+	if (LastConnectionState == EBattleshipSocketConnectionState::BPSocket_Connected)
 	{
 		UE_LOG(LogBattleship, Error, TEXT("Socket already connected"));
 		return false;
@@ -131,6 +146,52 @@ bool UBattleShipSocketWrapper::Connect(const FString& IP, int32 Port)
 		}
 	}
 	return Result;
+}
+
+void UBattleShipSocketWrapper::Disconnect(const bool Recreate)
+{
+	const auto* World = GetWorld();
+	if (IsValid(World))
+	{
+		auto& TM = World->GetTimerManager();
+		if (Timer.IsValid())
+		{
+			TM.ClearTimer(Timer);
+		}
+	}
+	Socket->Close();
+	Socket = nullptr;
+	if (Recreate)
+	{
+		Init();
+	}
+}
+
+void UBattleShipSocketWrapper::SendSkin(const int32 Skin)
+{
+	if(!SocketConnectionGuarantee())
+	{
+		return;
+	}
+	uint8 Data[2];
+	Data[0] = static_cast<uint8>(EWriteValues::Skin);
+	Data[1] = static_cast<uint8>(Skin);
+	int32 Sent;
+	Socket->Send(Data, 2, Sent);
+}
+
+void UBattleShipSocketWrapper::SendClick(const int32 X, const int32 Y)
+{
+	if(!SocketConnectionGuarantee())
+	{
+		return;
+	}
+	uint8 Data[3];
+	Data[0] = static_cast<uint8>(EWriteValues::Click);
+	Data[1] = static_cast<uint8>(X);
+	Data[1] = static_cast<uint8>(Y);
+	int32 Sent;
+	Socket->Send(Data, 3, Sent);
 }
 
 
