@@ -18,7 +18,7 @@ void UBattleShipSocketWrapper::Init()
 {
 	Socket = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->
 		CreateSocket(NAME_Stream, TEXT("BattleshipSocket"), false);
-	LastConnectionState = SCS_NotConnected;
+	LastConnectionState = EBattleshipSocketConnectionState::BPSocket_NotConnected;
 }
 
 void UBattleShipSocketWrapper::HandleByte(FByteData Data)
@@ -88,14 +88,16 @@ void UBattleShipSocketWrapper::Tick()
 		{
 			PendingDataCount = 128;
 		}
-		TArray<uint8> Data;
-		Data.Reserve(PendingDataCount);
+		static TArray<uint8> Data;
+		Data.SetNum(PendingDataCount, false);
 		int32 DataRead;
 		Socket->Recv(Data.GetData(), PendingDataCount, DataRead);
 		Data.SetNum(DataRead);
 		for (auto It = Data.CreateConstIterator(); It; ++It)
 		{
-			HandleByte({.Uns = *It});
+			FByteData ByteData;
+			ByteData.Uns = *It;
+			HandleByte(ByteData);
 		}
 	}
 }
