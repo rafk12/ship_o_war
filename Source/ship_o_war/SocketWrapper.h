@@ -8,30 +8,43 @@
 #include "SocketWrapper.generated.h"
 
 UENUM(BlueprintType)
-enum class ESocketEnum : uint8
+enum class EBattleshipSocketConnectionState : uint8
 {
-	SE_Connected UMETA(DisplayName = "Connected"),
-	SE_Disconnected UMETA(DisplayName = "Disconnected")
+	BPSocket_NotConnected UMETA(DisplayName="Not connected"),
+	BPSocket_Connected UMETA(DisplayName="Connected"),
+	BPSocket_ConnectionError UMETA(DisplayName="Connection error")
 };
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSocketStatus, ESocketEnum, Status);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSocketConnectionStateDelegate, EBattleshipSocketConnectionState, Status);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBSCreateGridDelegate, int32, Width, int32, Height);
 
 /**
  * 
  */
-UCLASS(BlueprintType)
-class SHIP_O_WAR_API USocketWrapper : public UObject
+UCLASS(BlueprintType) class SHIP_O_WAR_API UBattleShipSocketWrapper : public UObject
 {
 	GENERATED_BODY()
+
+	void Tick();
+
+	FSocket* Socket;
+	ESocketConnectionState LastConnectionState;
 public:
-	FSocket* socket;
 
-	FSocketStatus SocketStatus_Updated;
+	UFUNCTION(BlueprintCallable, Category = "Networking|Battleship|Socket", meta=(DisplayName="Create new socket", WorldContext = WorldContextObject))
+	static UBattleShipSocketWrapper* Create(UObject* WorldContextObject);
 
-	USocketWrapper();
+	void Init();
 
-	void Initialize(const FString& name, bool udp = false);
+	UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Networking|Battleship|Socket")
+	bool Connect(const FString& IP, int32 Port) const;
+
+	UPROPERTY(BlueprintAssignable)
+	FSocketConnectionStateDelegate SocketConnectionStateChanged;
+
+	//UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Networking|Socket")
+	//int32 Send(const TArray<uint8>& bytes) const;
 
 	void BeginDestroy() override;
 };

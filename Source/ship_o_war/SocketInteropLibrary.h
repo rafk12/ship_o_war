@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include <IPAddress.h>
-#include <TimerManager.h>
+#include "IPAddress.h"
+#include "TimerManager.h"
 #include "SocketInteropLibrary.generated.h"
 
 DECLARE_DYNAMIC_DELEGATE_TwoParams(FHostResolveStatus, int32, ErrorCode, const FString&, Address);

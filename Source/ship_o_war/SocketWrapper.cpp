@@ -3,17 +3,66 @@
 
 #include "SocketWrapper.h"
 #include "SocketSubsystem.h"
+#include "IPAddress.h"
 
-USocketWrapper::USocketWrapper()
+UBattleShipSocketWrapper* UBattleShipSocketWrapper::Create(UObject* WorldContextObject)
 {
+	auto* Obj = NewObject<UBattleShipSocketWrapper>(WorldContextObject, TEXT("UBattleShipSocketWrapper"));
+	Obj->Init();
+	return Obj;
 }
 
-void USocketWrapper::Initialize(const FString& name, bool udp)
+void UBattleShipSocketWrapper::Init()
 {
-	socket = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateSocket(NAME_Stream, name, udp);
+	Socket = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->
+		CreateSocket(NAME_Stream, TEXT("BattleshipSocket"), false);
+	LastConnectionState = SCS_NotConnected;
 }
 
-void USocketWrapper::BeginDestroy()
+void UBattleShipSocketWrapper::Tick()
 {
-	ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(socket);
+	const auto ConnectionState = Socket->GetConnectionState();
+	if (ConnectionState != LastConnectionState)
+	{
+		LastConnectionState = ConnectionState;
+		EBattleshipSocketConnectionState state;
+		switch (ConnectionState)
+		{
+			case SCS_NotConnected:
+				state = EBattleshipSocketConnectionState::BPSocket_NotConnected;
+				break;
+			case SCS_Connected:
+				state = EBattleshipSocketConnectionState::BPSocket_Connected;
+				break;
+			default:
+				state = EBattleshipSocketConnectionState::BPSocket_ConnectionError;
+				break;
+		}
+		SocketConnectionStateChanged.Broadcast(state);
+	}
+	uint32 PendingDataCount;
+	Socket->HasPendingData(PendingDataCount);
+}
+
+bool UBattleShipSocketWrapper::Connect(const FString& IP, int32 Port) const
+{
+	const TSharedPtr<FInternetAddr> Address = ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->CreateInternetAddr();
+	bool Valid;
+	Address->SetIp(*IP, Valid);
+	if (!Valid)
+	{
+		return false;
+	}
+	Address->SetPort(Port);
+	return Socket->Connect(*Address);
+}
+
+
+void UBattleShipSocketWrapper::BeginDestroy()
+{
+	Super::BeginDestroy();
+	if (Socket)
+	{
+		ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM)->DestroySocket(Socket);
+	}
 }
