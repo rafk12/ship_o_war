@@ -7,14 +7,13 @@ import java.util.logging.Logger
 
 enum class GameState {
     WAITING_PLAYERS,
-    FIRST,
-    SECOND,
+    PLAYING,
     GAME_OVER
 }
 
 class GridSize(val width: Int, val height: Int)
 
-class ServerStore(args: ServerArgs, val socketServer: ServerSocket) {
+class ServerStore(val args: ServerArgs, val socketServer: ServerSocket) {
 
     val log = Logger.getLogger("Server").apply {
         addHandler(BattleshipHandler())
@@ -25,30 +24,56 @@ class ServerStore(args: ServerArgs, val socketServer: ServerSocket) {
 
     val clients = mutableListOf<Client>()
 
-    val size = args.size
+    var currentClient: Client? = null
+    set(value) {
+        field = value
+        clients.forEach {
+            it.sendTurn(it == value)
+        }
+    }
 
-    fun tick() {
+    fun tick(): Boolean {
+        var anyData = false
         if (currentState == GameState.WAITING_PLAYERS) {
             if (clients.any { !it.gridSent }) {
-                return
+                return false
             }
-            currentState = GameState.FIRST
+            currentState = GameState.PLAYING
         } else if (clients.size < 2) {
             log.info("Waiting ${2 - clients.size} players...")
             try {
-                clients += Client(this, socketServer.accept())
+                val cl = Client(this, socketServer.accept())
+                clients += cl
+                currentClient = cl
             } catch (e: SocketTimeoutException) {
             }
         }
-        for (c in clients) {
-            try {
-                c.tick()
-            } catch (ioe: IOException) {
-                c.log.info("[IOException] Disconnected")
-                clients.remove(c)
-                return
+        if (currentState == GameState.PLAYING) {
+            for (c in clients) {
+                try {
+                    if (c.requiresNewSocket) {
+                        c.requiresNewSocket = false
+                        c.socket = socketServer.accept()
+                        c.log.info("New player connected")
+                    }
+                } catch (ioe: IOException) {
+                    c.log.info("Waiting player reconnect")
+                    return anyData
+                }
+                try {
+                    if (!c.requiresNewSocket && c.tick()) {
+                        anyData = true
+                    }
+                } catch (ioe: IOException) {
+                    if(!c.requiresNewSocket) {
+                        c.log.info("[IOException] Disconnected for unknown reason")
+                        clients.remove(c)
+                        return anyData
+                    }
+                }
             }
         }
+        return anyData
     }
 
 }
