@@ -29,8 +29,8 @@ void UBattleShipSocketWrapper::HandleByte(FByteData Data)
 		{
 			CurrentState = static_cast<EReadingState>(Data.Uns);
 			CurrentStateData.Reset();
+			return;
 		}
-		break;
 	case EReadingState::Grid:
 		{
 			if (CurrentStateData.Num() == 0)
@@ -39,7 +39,6 @@ void UBattleShipSocketWrapper::HandleByte(FByteData Data)
 				return;
 			}
 			BSCreateGridEvent.Broadcast(CurrentStateData[0], Data.Sig);
-			CurrentState = EReadingState::None;
 		}
 		break;
 	case EReadingState::Skin:
@@ -54,7 +53,6 @@ void UBattleShipSocketWrapper::HandleByte(FByteData Data)
 			}
 			BSRevealSlotEvent.Broadcast(CurrentStateData[0], CurrentStateData[1], CurrentStateData[2],
 			                            CurrentStateData[3], Data.Sig);
-			CurrentState = EReadingState::None;
 		}
 		break;
 	case EReadingState::Win:
@@ -66,11 +64,8 @@ void UBattleShipSocketWrapper::HandleByte(FByteData Data)
 	case EReadingState::Turn:
 		BSTurnEvent.Broadcast(!!Data.Sig);
 		break;
-	default:
-		{
-			CurrentState = EReadingState::None;
-		};
 	}
+	CurrentState = EReadingState::None;
 }
 
 void UBattleShipSocketWrapper::Tick()
@@ -191,7 +186,7 @@ void UBattleShipSocketWrapper::SendClick(const int32 X, const int32 Y)
 	uint8 Data[3];
 	Data[0] = static_cast<uint8>(EWriteValues::Click);
 	Data[1] = static_cast<uint8>(X);
-	Data[1] = static_cast<uint8>(Y);
+	Data[2] = static_cast<uint8>(Y);
 	int32 Sent;
 	Socket->Send(Data, 3, Sent);
 }
