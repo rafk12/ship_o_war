@@ -111,11 +111,11 @@ class Client(private val store: ServerStore, socket: Socket) {
         if (foundBoat != null) {
             foundBoat.removeLife()
             if (foundBoat.life == 0) {
-                other.sendSlot(foundBoat.x, foundBoat.y, foundBoat.width, foundBoat.height, SlotState.Explode)
+                other.sendSlot(-foundBoat.x, -foundBoat.y, foundBoat.width, foundBoat.height, SlotState.Explode)
             } else {
                 other.sendSlot(
-                    x,
-                    y,
+                    -x,
+                    -y,
                     1,
                     1,
                     getSlotStateFromPercentage(foundBoat.life.toFloat() / (foundBoat.width * foundBoat.height))
@@ -123,7 +123,7 @@ class Client(private val store: ServerStore, socket: Socket) {
             }
         }
         if (other.boats.isEmpty()) {
-
+            sendWin()
         }
         store.currentClient = other
     }
