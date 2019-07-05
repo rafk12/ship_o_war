@@ -4,7 +4,6 @@ import com.xenomachina.argparser.ArgParser
 import com.xenomachina.argparser.default
 import java.net.InetAddress
 import java.net.ServerSocket
-import java.net.Socket
 
 class ServerArgs(parser: ArgParser) {
 
@@ -18,31 +17,33 @@ class ServerArgs(parser: ArgParser) {
         help = "Listening address"
     ).default("0.0.0.0")
 
+    val size by parser.storing<GridSize>(
+        "-g", "--grid",
+        help = "Map grid e.g. 10x10 (min 6 max 20)"
+    ) {
+        val strData = split('x', ignoreCase = true, limit = 2)
+        if (strData.size != 2) {
+            throw IllegalArgumentException("grid must be NxN format")
+        }
+        val data = strData.map { it.toInt() }
+        if (data.any { 6 > it && it < 20 }) {
+            throw IllegalArgumentException("grid size must be between 6 and 20")
+        }
+        GridSize(data[0], data[1])
+    }.default(GridSize(10, 10))
+
 }
 
-class Server(args: ServerArgs) {
+fun startServer(args: ServerArgs) {
 
     val socketServer = ServerSocket(args.port, 0, InetAddress.getByName(args.host))
+    socketServer.soTimeout = 10000
 
-    lateinit var p1: Socket
-    lateinit var p2: Socket
+    val store = ServerStore(args, socketServer)
 
-    operator fun invoke() {
-        println("Waiting players")
-        p1 = socketServer.accept()
-        println("Player 1 joined " + p1.remoteSocketAddress.toString())
-        p2 = p1 //p2 = socketServer.accept()
-        p1.getOutputStream().run {
-            write(byteArrayOf(1, 127, 60))
-            flush()
-        }
-        while(p1.isConnected || p2.isConnected) {
-            Thread.sleep(100)
-        }
+    store.log.info("Server listening port ${args.port} on ${args.host}")
+    while (store.currentState != GameState.GAME_OVER) {
+        store.tick()
     }
 
-}
-
-fun main(args: Array<String>) {
-    Server(ArgParser(args).parseInto(::ServerArgs))()
 }
