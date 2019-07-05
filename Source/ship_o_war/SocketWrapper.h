@@ -20,10 +20,10 @@ UENUM(BlueprintType)
 UENUM(BlueprintType)
 	enum class EBattleshipMapSlotState : uint8
 {
-	BPMap_Intact UMETA(DisplayName="Intact"),
-	BPMap_Smoke UMETA(DisplayName="Smoke"),
-	BPMap_Fire UMETA(DisplayName="Fire"),
-	BPMap_Explore UMETA(DisplayName="Explode")
+	BPMap_Intact = 0 UMETA(DisplayName="Intact"),
+	BPMap_Smoke = 1 UMETA(DisplayName="Smoke"),
+	BPMap_Fire = 2 UMETA(DisplayName="Fire"),
+	BPMap_Explore = 3 UMETA(DisplayName="Explode")
 };
 
 
@@ -34,7 +34,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBSCreateGridDelegate, int32, Width
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBSSelectSkinDelegate, int32, Code);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FBSRevealSlotDelegate, int32, X, int32, Y, int32, Width, int32, Height,
-                                              int32, EBattleshipMapSlotState);
+                                              EBattleshipMapSlotState, state);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBSWinDelegate, bool, Me);
 

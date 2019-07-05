@@ -52,7 +52,7 @@ void UBattleShipSocketWrapper::HandleByte(FByteData Data)
 				return;
 			}
 			BSRevealSlotEvent.Broadcast(CurrentStateData[0], CurrentStateData[1], CurrentStateData[2],
-			                            CurrentStateData[3], Data.Sig);
+			                            CurrentStateData[3], static_cast<EBattleshipMapSlotState>(Data.Sig));
 		}
 		break;
 	case EReadingState::Win:
