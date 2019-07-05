@@ -55,6 +55,7 @@ class ServerStore(val args: ServerArgs, val socketServer: ServerSocket) {
                         c.requiresNewSocket = false
                         c.socket = socketServer.accept()
                         c.log.info("New player connected")
+                        c.sendTurn(currentClient == c)
                     }
                 } catch (ioe: IOException) {
                     c.log.info("Waiting player reconnect")

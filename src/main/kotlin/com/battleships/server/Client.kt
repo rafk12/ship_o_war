@@ -129,7 +129,7 @@ class Client(private val store: ServerStore, socket: Socket) {
     }
 
     fun sendTurn(me: Boolean) {
-        write(0x7, if (me) 1 else 0)
+        write(0x6, (if (me) 1 else 0).toByte())
     }
 
     private val readingBuffer = ByteArray(16)
@@ -145,7 +145,7 @@ class Client(private val store: ServerStore, socket: Socket) {
         }
         if (!gridSent) {
             gridSent = true
-            write(0x01, store.args.size.width.toByte(), store.args.size.height.toByte())
+            write(1, store.args.size.width.toByte(), store.args.size.height.toByte())
             boats.values.toSet().forEach { boat ->
                 sendSlot(boat.x, boat.y, boat.width, boat.height, SlotState.Intact)
             }
